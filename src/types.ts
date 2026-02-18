@@ -1,6 +1,7 @@
-export type GoalCategory = 'health' | 'career' | 'education' | 'personal' | 'finance' | 'sport' | 'other';
+export type GoalCategory = 'health' | 'career' | 'education' | 'personal' | 'finance' | 'sport' | 'other' | 'learning' | 'social' | 'creativity' | 'productivity';
 export type GoalPriority = 'low' | 'medium' | 'high';
 export type GoalStatus = 'active' | 'completed' | 'paused';
+export type GoalDifficulty = 'easy' | 'medium' | 'hard' | 'epic';
 export type HabitFrequency = 'daily' | 'weekly';
 
 export interface Goal {
@@ -10,10 +11,16 @@ export interface Goal {
   category: GoalCategory;
   priority: GoalPriority;
   status: GoalStatus;
+  difficulty: GoalDifficulty;
   progress: number; // 0-100
+  target: number;
+  unit: string;
   targetDate: string; // ISO date string
+  deadline?: string;
   createdAt: string;
   updatedAt: string;
+  completed: boolean;
+  completedAt?: string;
   xpReward: number;
   milestones: Milestone[];
   tags: string[];
@@ -34,9 +41,12 @@ export interface Habit {
   frequency: HabitFrequency;
   targetDays: number[]; // 0=Sunday, 1=Monday, ...
   completedDates: string[]; // ISO date strings
+  completedToday: boolean;
   currentStreak: number;
   longestStreak: number;
+  streak: number;
   xpPerCompletion: number;
+  xpReward: number;
   createdAt: string;
   color: string;
   icon: string;
