@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Goal, Habit, UserProfile } from '../types';
-import { getEarnedBadges, formatDate } from '../utils';
 
 interface ProfileViewProps {
   profile: UserProfile;
@@ -11,22 +10,42 @@ interface ProfileViewProps {
 
 const avatarOptions = ['🧙', '🦸', '🦹', '👨‍💻', '👩‍💻', '🧐', '🧝', '🚀', '🌟', '👽'];
 
-const rarityLabels = {
+const rarityLabels: Record<string, string> = {
   common: 'Commun',
   rare: 'Rare',
   epic: 'Épique',
   legendary: 'Légendaire',
 };
 
+function getEarnedBadgesLocal(profile: UserProfile, goals: Goal[], habits: Habit[]) {
+  const badges = [];
+  const completedGoals = goals.filter((g: any) => g.status === 'completed' || g.completed);
+  const maxStreak = habits.length > 0 ? Math.max(...habits.map((h: any) => h.currentStreak || h.streak || 0)) : 0;
+
+  if (goals.length >= 1) badges.push({ id: 'first_goal', name: 'Premier Pas', icon: '🎯', rarity: 'common' });
+  if (completedGoals.length >= 1) badges.push({ id: 'first_complete', name: 'Accomplissement', icon: '✅', rarity: 'common' });
+  if (maxStreak >= 7) badges.push({ id: 'habit_week', name: 'Semaine Parfaite', icon: '🔥', rarity: 'rare' });
+  if (profile.level >= 5) badges.push({ id: 'level_5', name: 'Expert', icon: '⭐', rarity: 'rare' });
+  if (profile.level >= 10) badges.push({ id: 'level_10', name: 'Légende', icon: '👑', rarity: 'legendary' });
+  if (completedGoals.length >= 5) badges.push({ id: 'goals_5', name: 'Ambitieux', icon: '🔝', rarity: 'rare' });
+  if (habits.length >= 5) badges.push({ id: 'habit_5', name: 'Routinier', icon: '🔄', rarity: 'common' });
+  if (profile.xp >= 1000) badges.push({ id: 'xp_1000', name: 'Guerrier XP', icon: '⚡', rarity: 'rare' });
+  return badges;
+}
+
 export default function ProfileView({ profile, goals, habits, onUpdateProfile }: ProfileViewProps) {
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(profile.name);
-  const badges = getEarnedBadges(profile, goals, habits);
+  const badges = getEarnedBadgesLocal(profile, goals, habits);
 
   const handleSave = () => {
     onUpdateProfile({ name: nameInput.trim() || profile.name });
     setEditing(false);
   };
+
+  const xpProgress = profile.xpToNextLevel > 0
+    ? Math.round((profile.xp / profile.xpToNextLevel) * 100)
+    : 0;
 
   return (
     <div className="space-y-4">
@@ -40,12 +59,12 @@ export default function ProfileView({ profile, goals, habits, onUpdateProfile }:
                 <input
                   value={nameInput}
                   onChange={e => setNameInput(e.target.value)}
-                  className="input-field text-base font-bold py-2"
+                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-base font-bold flex-1 focus:outline-none focus:border-purple-500"
                   placeholder="Votre nom"
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                   autoFocus
                 />
-                <button onClick={handleSave} className="btn-primary py-2">✓</button>
+                <button onClick={handleSave} className="btn-primary py-2 px-4">✓</button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -58,25 +77,22 @@ export default function ProfileView({ profile, goals, habits, onUpdateProfile }:
                 </button>
               </div>
             )}
-            <div className="flex items-center gap-2 mt-1">
-              <span className="level-badge px-2 py-0.5 rounded-lg text-white text-xs font-bold">
-                Niveau {profile.level}
-              </span>
-              <span className="text-white/40 text-sm">Membre depuis {formatDate(profile.joinedAt)}</span>
-            </div>
+            <p className="text-white/50 text-sm">
+              Niveau {profile.level} &nbsp;•&nbsp; Membre depuis {new Date(profile.joinedAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            </p>
           </div>
         </div>
 
         {/* XP Progress */}
         <div className="mt-4">
-          <div className="flex justify-between mb-1">
-            <span className="text-xs text-white/50">XP vers niveau {profile.level + 1}</span>
-            <span className="text-xs font-semibold text-violet-300">{profile.xp}/{profile.xpToNextLevel}</span>
+          <div className="flex justify-between text-sm text-white/60 mb-1">
+            <span>XP vers niveau {profile.level + 1}</span>
+            <span>{profile.xp}/{profile.xpToNextLevel}</span>
           </div>
-          <div className="progress-bar">
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="progress-bar-fill bg-gradient-to-r from-violet-500 to-indigo-500"
-              style={{ width: `${Math.round((profile.xp / profile.xpToNextLevel) * 100)}%` }}
+              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(xpProgress, 100)}%` }}
             />
           </div>
         </div>
@@ -85,7 +101,7 @@ export default function ProfileView({ profile, goals, habits, onUpdateProfile }:
       {/* Avatar Selector */}
       <div className="glass-card p-4">
         <h2 className="text-base font-semibold text-white mb-3">Choisir un avatar</h2>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="flex flex-wrap gap-2">
           {avatarOptions.map(avatar => (
             <button
               key={avatar}
@@ -105,12 +121,12 @@ export default function ProfileView({ profile, goals, habits, onUpdateProfile }:
       {/* Stats Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="glass-card p-4 text-center">
-          <p className="text-3xl font-bold text-green-400">{profile.totalGoalsCompleted}</p>
-          <p className="text-sm text-white/50 mt-1">Objectifs complétés</p>
+          <p className="text-3xl font-black text-purple-400">{profile.totalGoalsCompleted}</p>
+          <p className="text-xs text-white/50 mt-1">Objectifs complétés</p>
         </div>
         <div className="glass-card p-4 text-center">
-          <p className="text-3xl font-bold text-blue-400">{profile.totalHabitsCompleted}</p>
-          <p className="text-sm text-white/50 mt-1">Habitudes complétées</p>
+          <p className="text-3xl font-black text-pink-400">{profile.totalHabitsCompleted}</p>
+          <p className="text-xs text-white/50 mt-1">Habitudes complétées</p>
         </div>
       </div>
 
@@ -127,11 +143,14 @@ export default function ProfileView({ profile, goals, habits, onUpdateProfile }:
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {badges.map(badge => (
-              <div key={badge.id} className={`p-3 rounded-xl border ${
-                badge.rarity === 'legendary' ? 'badge-legendary' :
-                badge.rarity === 'epic' ? 'badge-epic' :
-                badge.rarity === 'rare' ? 'badge-rare' : 'badge-common'
-              }`}>
+              <div
+                key={badge.id}
+                className={`p-3 rounded-xl border ${
+                  badge.rarity === 'legendary' ? 'badge-legendary' :
+                  badge.rarity === 'epic' ? 'badge-epic' :
+                  badge.rarity === 'rare' ? 'badge-rare' : 'badge-common'
+                }`}
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{badge.icon}</span>
                   <div>
@@ -146,6 +165,4 @@ export default function ProfileView({ profile, goals, habits, onUpdateProfile }:
       </div>
     </div>
   );
-  }
-
 }
