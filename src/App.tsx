@@ -18,6 +18,7 @@ export default function App() {
     const saved = loadGameState();
     return saved || getInitialGameState();
   });
+
   const [showDailyChest, setShowDailyChest] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -28,6 +29,7 @@ export default function App() {
     saveTimeoutRef.current = setTimeout(() => {
       saveGameState(state);
     }, 500);
+
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
@@ -37,11 +39,13 @@ export default function App() {
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const lastOpened = state.dailyChest.lastOpenedDate;
+    
     if (lastOpened !== today) {
       setState(prev => ({
         ...prev,
         dailyChest: { ...prev.dailyChest, isAvailable: true }
       }));
+      
       // Show chest popup after 2s
       const timer = setTimeout(() => setShowDailyChest(true), 2000);
       return () => clearTimeout(timer);
@@ -51,9 +55,15 @@ export default function App() {
   // --- Music ---
   useEffect(() => {
     if (!audioRef.current) return;
+    
     if (state.music.isPlaying && !state.music.isMuted) {
       audioRef.current.volume = state.music.volume;
-      audioRef.current.play().catch(() => {});
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Auto-play might be blocked, wait for user interaction
+        });
+      }
     } else {
       audioRef.current.pause();
     }
@@ -124,6 +134,7 @@ export default function App() {
       goals: prev.goals.map(g => {
         if (g.id !== id) return g;
         const updated = { ...g, ...updates, updatedAt: new Date().toISOString() };
+        
         // Check completion
         if (updates.progress === 100 && !g.completed) {
           earnXP(g.xpReward, g.title);
@@ -155,8 +166,10 @@ export default function App() {
       habits: prev.habits.map(h => {
         if (h.id !== id) return h;
         if (h.completedDates.includes(today)) return h;
+        
         earnXP(h.xpReward, h.title);
         earnGold(h.goldReward || 20);
+        
         return {
           ...h,
           completedDates: [...h.completedDates, today],
@@ -171,11 +184,13 @@ export default function App() {
   const handleDailyChest = useCallback(() => {
     const today = new Date().toISOString().split('T')[0];
     const reward = openChest('wood');
+    
     earnXP(reward.xp, 'Coffre du jour');
     earnGold(reward.gold);
     if (reward.gems > 0) {
       setState(prev => ({ ...prev, gems: prev.gems + reward.gems }));
     }
+
     setState(prev => ({
       ...prev,
       dailyChest: { lastOpenedDate: today, streak: prev.dailyChest.streak + 1, isAvailable: false }
@@ -184,13 +199,10 @@ export default function App() {
   }, [earnXP, earnGold]);
 
   const toggleMusic = useCallback(() => {
-    setState(prev => {
-      const newPlaying = !prev.music.isPlaying;
-      if (newPlaying && audioRef.current) {
-        audioRef.current.play().catch(() => {});
-      }
-      return { ...prev, music: { ...prev.music, isPlaying: newPlaying } };
-    });
+    setState(prev => ({
+      ...prev,
+      music: { ...prev.music, isPlaying: !prev.music.isPlaying }
+    }));
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -217,61 +229,64 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-24 overflow-x-hidden">
       {/* Audio */}
-      <audio
+      <audio 
         ref={audioRef}
         src="https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3"
         loop
-        preload="none"
+        preload="auto"
       />
 
       {/* Top Bar */}
-      <div className="top-bar">
-        <div className="top-bar-left">
-          <span className="arena-badge">{state.currentArena.replace('_', ' ')}</span>
+      <div className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-600 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider text-white shadow-lg shadow-blue-500/20">
+            {state.currentArena.replace('_', ' ')}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-400">NIVEAU {state.level}</span>
+            <span className="text-[10px] text-blue-400 font-black uppercase tracking-tighter leading-none">{levelInfo.title}</span>
+          </div>
         </div>
-        <div className="top-bar-currencies">
-          <span className="currency xp">⚡ {state.xp.toLocaleString()}</span>
-          <span className="currency gold">💰 {state.gold.toLocaleString()}</span>
-          <span className="currency gems">💎 {state.gems}</span>
-        </div>
-        <div className="top-bar-controls">
-          {state.dailyChest.isAvailable && (
-            <button className="chest-btn pulse" onClick={() => setShowDailyChest(true)} title="Coffre du jour">
-              🎁
-            </button>
-          )}
-          <button className="music-btn" onClick={toggleMusic} title={state.music.isPlaying ? 'Pause' : 'Musique'}>
-            {state.music.isPlaying ? (state.music.isMuted ? '🔇' : '🔊') : '🎵'}
-          </button>
-          {state.music.isPlaying && (
-            <button className="mute-btn" onClick={toggleMute}>
-              {state.music.isMuted ? '🔇' : '🔊'}
-            </button>
-          )}
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-slate-800/50 rounded-full px-2 py-1 gap-1.5 border border-slate-700/50">
+            <span className="text-sm">💰</span>
+            <span className="text-xs font-black tracking-tighter">{state.gold.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center bg-slate-800/50 rounded-full px-2 py-1 gap-1.5 border border-slate-700/50">
+            <span className="text-sm">💎</span>
+            <span className="text-xs font-black tracking-tighter">{state.gems}</span>
+          </div>
         </div>
       </div>
 
-      {/* XP Bar */}
-      <XPBar
-        level={levelInfo.level}
-        currentXP={levelInfo.currentXP}
-        requiredXP={levelInfo.requiredXP}
-        title={levelInfo.title}
-      />
-
       {/* Main Content */}
-      <main className="main-content">
-        {renderView()}
+      <main className="pt-20 px-4 max-w-lg mx-auto">
+        <XPBar 
+          level={levelInfo.level}
+          currentXP={levelInfo.currentXP}
+          requiredXP={levelInfo.requiredXP}
+          title={levelInfo.title}
+        />
+        
+        <div className="mt-6">
+          {renderView()}
+        </div>
       </main>
 
       {/* Navbar */}
-      <Navbar currentView={state.currentView} onChangeView={navigateTo} />
+      <Navbar 
+        activeView={state.currentView} 
+        onChangeView={navigateTo}
+        isMusicPlaying={state.music.isPlaying}
+        onToggleMusic={toggleMusic}
+      />
 
       {/* Daily Chest Modal */}
       {showDailyChest && (
-        <DailyChest
+        <DailyChest 
           streak={state.dailyChest.streak}
           onOpen={handleDailyChest}
           onClose={() => setShowDailyChest(false)}
@@ -279,12 +294,15 @@ export default function App() {
       )}
 
       {/* Notifications */}
-      <NotificationToast notifications={state.notifications.filter(n => !n.read)} onDismiss={(id) => {
-        setState(prev => ({
-          ...prev,
-          notifications: prev.notifications.map(n => n.id === id ? { ...n, read: true } : n)
-        }));
-      }} />
+      <NotificationToast 
+        notifications={state.notifications.filter(n => !n.read)} 
+        onDismiss={(id) => {
+          setState(prev => ({
+            ...prev,
+            notifications: prev.notifications.map(n => n.id === id ? { ...n, read: true } : n)
+          }));
+        }} 
+      />
     </div>
   );
 }
