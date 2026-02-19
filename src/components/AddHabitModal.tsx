@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Habit } from '../types';
+import React, { useState } from 'react';
+import { Habit, GoalCategory, HabitFrequency } from '../types';
 
 interface AddHabitModalProps {
   onClose: () => void;
-  onAdd: (habit: Omit<Habit, 'id' | 'createdAt' | 'streak' | 'completedToday' | 'completedDates'>) => void;
+  onAdd: (habit: Omit<Habit, 'id' | 'createdAt' | 'streak' | 'completedToday' | 'completedDates' | 'currentStreak' | 'longestStreak'>) => void;
 }
 
 const categoryOptions = [
@@ -20,30 +20,29 @@ const frequencyOptions = [
   { value: 'weekly', label: 'Hebdomadaire', desc: 'Chaque semaine' },
 ];
 
-const iconOptions = ['🏋️', '📚', '💰', '🧘', '🎨', '💧', '🎵', '💻', '🚴', '🛕', '✍️', '📱', '🤷', '💪', '🎯'];
+const iconOptions = ['🏋️', '📚', '💰', '🧘', '🎨', '💧', '🎵', '💻', '🚴', '🗕️', '✍️', '📱', '🤷', '💪', '🎯'];
 
 export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Habit['category']>('health');
-  const [frequency, setFrequency] = useState<Habit['frequency']>('daily');
+  const [category, setCategory] = useState<GoalCategory>('health');
+  const [frequency, setFrequency] = useState<HabitFrequency>('daily');
   const [xpReward, setXpReward] = useState('10');
   const [selectedIcon, setSelectedIcon] = useState('🏋️');
   const [color, setColor] = useState('#8b5cf6');
 
-  const colorOptions = [
-    '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#14b8a6'
-  ];
+  const colorOptions = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#14b8a6'];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-
     onAdd({
       title: title.trim(),
       description: description.trim(),
       category,
       frequency,
+      targetDays: frequency === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : [1, 3, 5],
+      xpPerCompletion: parseInt(xpReward) || 10,
       xpReward: parseInt(xpReward) || 10,
       icon: selectedIcon,
       color,
@@ -57,26 +56,13 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white">🔄 Nouvelle Habitude</h2>
-            <button
-              onClick={onClose}
-              className="text-white/40 hover:text-white transition-colors text-xl"
-            >
-              ✕
-            </button>
+            <button onClick={onClose} className="text-white/40 hover:text-white transition-colors text-xl">✕</button>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Icon & Title */}
-            <div className="flex gap-3">
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-1">Icône</label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    className="w-14 h-12 bg-white/5 border border-white/10 rounded-xl text-2xl flex items-center justify-center hover:border-white/20 transition-colors"
-                  >
-                    {selectedIcon}
-                  </button>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style={{ backgroundColor: color + '33' }}>
+                  {selectedIcon}
                 </div>
               </div>
               <div className="flex-1">
@@ -92,8 +78,6 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 />
               </div>
             </div>
-
-            {/* Icon picker */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">Choisir une icône</label>
               <div className="flex flex-wrap gap-2">
@@ -113,8 +97,6 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 ))}
               </div>
             </div>
-
-            {/* Description */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Description</label>
               <textarea
@@ -125,8 +107,6 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-purple-500 transition-colors resize-none"
               />
             </div>
-
-            {/* Category */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">Catégorie</label>
               <div className="grid grid-cols-3 gap-2">
@@ -134,7 +114,7 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                   <button
                     key={cat.value}
                     type="button"
-                    onClick={() => setCategory(cat.value as Habit['category'])}
+                    onClick={() => setCategory(cat.value as GoalCategory)}
                     className={`p-2 rounded-xl border text-sm transition-all ${
                       category === cat.value
                         ? 'border-purple-500 bg-purple-500/20 text-white'
@@ -146,8 +126,6 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 ))}
               </div>
             </div>
-
-            {/* Frequency */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">Fréquence</label>
               <div className="grid grid-cols-2 gap-2">
@@ -155,7 +133,7 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                   <button
                     key={freq.value}
                     type="button"
-                    onClick={() => setFrequency(freq.value as Habit['frequency'])}
+                    onClick={() => setFrequency(freq.value as HabitFrequency)}
                     className={`p-3 rounded-xl border text-sm transition-all ${
                       frequency === freq.value
                         ? 'border-purple-500 bg-purple-500/20 text-white'
@@ -168,8 +146,6 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 ))}
               </div>
             </div>
-
-            {/* Color & XP */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-2">Couleur</label>
@@ -188,7 +164,7 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1">XP par completion</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">XP par complétion</label>
                 <input
                   type="number"
                   value={xpReward}
@@ -199,24 +175,17 @@ export default function AddHabitModal({ onClose, onAdd }: AddHabitModalProps) {
                 />
               </div>
             </div>
-
-            {/* Preview */}
             <div className="p-3 rounded-xl bg-white/5 border border-white/10">
               <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ backgroundColor: color + '33' }}
-                >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ backgroundColor: color + '33' }}>
                   {selectedIcon}
                 </div>
                 <div>
-                  <p className="font-medium text-white">{title || 'Titre de l\'habitude'}</p>
+                  <p className="font-medium text-white">{title || "Titre de l'habitude"}</p>
                   <p className="text-xs text-white/40">{frequency === 'daily' ? 'Quotidien' : 'Hebdomadaire'} • +{xpReward} XP</p>
                 </div>
               </div>
             </div>
-
-            {/* Actions */}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
