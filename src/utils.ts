@@ -54,7 +54,16 @@ export const calcLevelFromXP = (totalXP: number): LevelInfo => {
     'Grand Maître', 'Légendaire', 'Mythique', 'Divin', 'Immortel',
   ];
   const title = titles[Math.min(Math.floor((level - 1) / 5), titles.length - 1)];
-  return { level, xp: remaining, xpForNext, title };
+  
+  // Arenas based on levels (simplified)
+  const arenaIds: ArenaId[] = [
+    'goblin_stadium', 'bone_pit', 'barbarian_bowl', 'pekkas_playhouse', 
+    'spell_valley', 'royal_arena', 'frozen_peak', 'legendary_arena'
+  ];
+  const arenaIndex = Math.min(Math.floor((level - 1) / 5), arenaIds.length - 1);
+  const arena = arenaIds[arenaIndex];
+
+  return { level, currentXP: remaining, requiredXP: xpForNext, arena, title };
 };
 
 // --- Date Utilities ---
@@ -184,6 +193,29 @@ export const getArenas = (): Arena[] => [
     unlocked: false,
   },
 ];
+
+// --- Loot System ---
+export const openChest = (rarity: ChestRarity): LootReward => {
+  const rewards = {
+    wood: { gold: [20, 50], xp: [50, 100], gems: 0, gemChance: 0.1 },
+    steel: { gold: [50, 120], xp: [100, 250], gems: [2, 5], gemChance: 0.3 },
+    gold: { gold: [150, 350], xp: [300, 600], gems: [5, 15], gemChance: 0.6 },
+    amethyst: { gold: [400, 900], xp: [800, 1500], gems: [20, 50], gemChance: 0.9 },
+    obsidian: { gold: [1000, 2500], xp: [2000, 4500], gems: [50, 150], gemChance: 1.0 },
+  };
+
+  const config = rewards[rarity];
+  const gold = Math.floor(Math.random() * (config.gold[1] - config.gold[0] + 1)) + config.gold[0];
+  const xp = Math.floor(Math.random() * (config.xp[1] - config.xp[0] + 1)) + config.xp[0];
+  let gems = 0;
+  if (Math.random() < config.gemChance) {
+    gems = Array.isArray(config.gems) 
+      ? Math.floor(Math.random() * (config.gems[1] - config.gems[0] + 1)) + config.gems[0]
+      : config.gems;
+  }
+
+  return { gold, xp, gems, chestRarity: rarity };
+};
 
 // --- Persistence ---
 const STORAGE_KEY = 'goal_v2_gamestate';
