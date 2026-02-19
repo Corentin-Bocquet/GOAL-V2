@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Timer, Pause, Play, RefreshCw, Trophy, Skull } from 'lucide-react';
+import React from 'react';
+import { useState, useEffect } from 'react';
+import { Swords, Timer, Pause, Play, RefreshCw } from 'lucide-react';
 
 export const CombatTimer: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -28,94 +28,100 @@ export const CombatTimer: React.FC = () => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  const switchMode = (newMode: 'work' | 'break') => {
+    setMode(newMode);
+    setIsActive(false);
+    setTimeLeft(newMode === 'work' ? 25 * 60 : 5 * 60);
+  };
+
+  const progress = mode === 'work'
+    ? ((25 * 60 - timeLeft) / (25 * 60)) * 100
+    : ((5 * 60 - timeLeft) / (5 * 60)) * 100;
+
   return (
-    <div className="flex flex-col items-center justify-center space-y-8 p-6 bg-slate-900/50 rounded-3xl border border-slate-700 shadow-xl max-w-sm mx-auto">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-black text-white flex items-center justify-center gap-2 uppercase tracking-tighter">
-          {mode === 'work' ? (
-            <><Swords className="text-red-500 animate-pulse" /> Phase de Combat</>
-          ) : (
-            <><Timer className="text-blue-400" /> Repos du Guerrier</>
-          )}
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-xl font-black text-white flex items-center justify-center gap-2">
+          <Swords size={20} className="text-red-400" />
+          Mode Combat
         </h2>
-        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">
-          {mode === 'work' ? 'Élimine tes tâches !' : 'Récupère tes forces'}
-        </p>
+        <p className="text-xs text-slate-500 mt-1">Focus Pomodoro - Gagne de l'XP en restant concentré</p>
       </div>
 
-      <div className="relative w-64 h-64 flex items-center justify-center">
-        <svg className="absolute inset-0 w-full h-full -rotate-90">
-          <circle
-            cx="128"
-            cy="128"
-            r="120"
-            className="stroke-slate-800 fill-none"
-            strokeWidth="8"
-          />
-          <motion.circle
-            cx="128"
-            cy="128"
-            r="120"
-            className={`fill-none ${mode === 'work' ? 'stroke-red-600' : 'stroke-blue-500'}`}
-            strokeWidth="12"
-            strokeLinecap="round"
-            initial={{ pathLength: 1 }}
-            animate={{ pathLength: timeLeft / (mode === 'work' ? 25 * 60 : 5 * 60) }}
-            transition={{ duration: 1, ease: "linear" }}
-            style={{ filter: mode === 'work' ? 'drop-shadow(0 0 8px rgba(220, 38, 38, 0.5))' : 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))' }}
-          />
-        </svg>
-
-        <div className="text-center z-10">
-          <motion.span 
-            key={timeLeft}
-            initial={{ scale: 1.1, opacity: 0.8 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-6xl font-black text-white font-mono tabular-nums"
-          >
-            {formatTime(timeLeft)}
-          </motion.span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4 w-full">
+      {/* Mode selector */}
+      <div className="flex gap-2 bg-slate-800 rounded-xl p-1">
         <button
-          onClick={resetTimer}
-          className="p-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl transition-all"
-        >
-          <RefreshCw size={24} />
-        </button>
-
-        <button
-          onClick={toggleTimer}
-          className={`flex-1 py-4 rounded-2xl font-black text-xl uppercase tracking-widest transition-all transform active:scale-95 flex items-center justify-center gap-3 shadow-lg ${
-            isActive 
-              ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/40' 
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-900/40'
+          onClick={() => switchMode('work')}
+          className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+            mode === 'work' ? 'bg-red-600 text-white' : 'text-slate-400'
           }`}
         >
-          {isActive ? (
-            <><Pause fill="currentColor" /> Pause</>
-          ) : (
-            <><Play fill="currentColor" /> Combattre !</>
-          )}
+          ⚔️ Combat (25 min)
+        </button>
+        <button
+          onClick={() => switchMode('break')}
+          className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+            mode === 'break' ? 'bg-green-600 text-white' : 'text-slate-400'
+          }`}
+        >
+          🏥 Repos (5 min)
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 w-full">
-        <div className="p-3 bg-slate-800/30 rounded-xl border border-slate-700/50 flex flex-col items-center">
-          <Trophy size={16} className="text-yellow-500 mb-1" />
-          <span className="text-xs font-bold text-slate-500">BUTIN</span>
-          <span className="text-sm font-black text-white">+50 XP</span>
+      {/* Timer display */}
+      <div className="bg-slate-800 rounded-2xl p-8 border border-slate-700 text-center">
+        <div className="relative inline-block">
+          <div
+            className={`text-7xl font-black font-mono ${
+              isActive ? (mode === 'work' ? 'text-red-400' : 'text-green-400') : 'text-white'
+            }`}
+          >
+            {formatTime(timeLeft)}
+          </div>
         </div>
-        <div className="p-3 bg-slate-800/30 rounded-xl border border-slate-700/50 flex flex-col items-center">
-          <Skull size={16} className="text-red-500 mb-1" />
-          <span className="text-xs font-bold text-slate-500">MENACE</span>
-          <span className="text-sm font-black text-white">HAUTE</span>
+
+        {/* Progress bar */}
+        <div className="mt-4 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ${
+              mode === 'work' ? 'bg-red-500' : 'bg-green-500'
+            }`}
+            style={{ width: `${progress}%` }}
+          />
         </div>
+
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <button
+            onClick={resetTimer}
+            className="p-3 bg-slate-700 hover:bg-slate-600 rounded-xl transition-all"
+          >
+            <RefreshCw size={20} className="text-slate-300" />
+          </button>
+          <button
+            onClick={toggleTimer}
+            className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${
+              isActive
+                ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}
+          >
+            {isActive ? <Pause size={20} /> : <Play size={20} />}
+            {isActive ? 'Pause' : 'Démarrer'}
+          </button>
+          <div className="p-3">
+            <Timer size={20} className="text-slate-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* XP info */}
+      <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+        <p className="text-xs text-slate-400 text-center">
+          ⚡ Compléter une session = <span className="text-yellow-400 font-bold">+50 XP</span> + <span className="text-yellow-400 font-bold">+25 Or</span>
+        </p>
       </div>
     </div>
   );
