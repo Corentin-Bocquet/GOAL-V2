@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Goal, Habit, UserProfile } from './types';
 import {
   generateId,
-  calculateLevel,
-  calculateStreak,
-  isCompletedToday,
+  calcLevelFromXP,
+  calcHabitStreak,
+  isHabitCompletedToday,
 } from './utils';
 import Navbar from './components/Navbar';
 import XPBar from './components/XPBar';
@@ -14,8 +14,6 @@ import StatsView from './components/StatsView';
 import ProfileView from './components/ProfileView';
 import AddGoalModal from './components/AddGoalModal';
 import AddHabitModal from './components/AddHabitModal';
-
-const XP_PER_LEVEL = 500;
 
 function saveState<T>(key: string, value: T): void {
   try { localStorage.setItem(`goal-v2-${key}`, JSON.stringify(value)); } catch {}
@@ -31,10 +29,10 @@ function loadState<T>(key: string, defaultValue: T): T {
 const defaultProfile: UserProfile = {
   id: '1',
   name: 'Joueur',
-  avatar: '🧙',
+  avatar: '',
   level: 1,
   xp: 0,
-  xpToNextLevel: XP_PER_LEVEL,
+  xpToNextLevel: 100,
   totalGoalsCompleted: 0,
   totalHabitsCompleted: 0,
   joinedAt: new Date().toISOString(),
@@ -47,7 +45,7 @@ const sampleGoals: Goal[] = [
   {
     id: generateId(),
     title: 'Apprendre React TypeScript',
-    description: 'Maîtniser React avec TypeScript pour créer des applications web modernes',
+    description: 'Maitriser React avec TypeScript',
     category: 'education',
     priority: 'high',
     status: 'active',
@@ -62,15 +60,14 @@ const sampleGoals: Goal[] = [
     xpReward: 200,
     milestones: [
       { id: generateId(), title: 'Bases de React', completed: true, completedAt: new Date().toISOString() },
-      { id: generateId(), title: 'Hooks avancés', completed: false },
-      { id: generateId(), title: 'TypeScript avec React', completed: false },
+      { id: generateId(), title: 'Hooks avances', completed: false },
     ],
-    tags: ['code', 'web', 'typescript'],
+    tags: ['code', 'web'],
   },
   {
     id: generateId(),
     title: 'Courir un 10km',
-    description: 'Préparer et courir un 10km sous 1h',
+    description: 'Preparer et courir un 10km sous 1h',
     category: 'sport',
     priority: 'medium',
     status: 'active',
@@ -84,19 +81,18 @@ const sampleGoals: Goal[] = [
     completed: false,
     xpReward: 100,
     milestones: [
-      { id: generateId(), title: 'Courir 3km sans arrêt', completed: true, completedAt: new Date().toISOString() },
-      { id: generateId(), title: 'Courir 5km', completed: false },
+      { id: generateId(), title: 'Courir 3km', completed: true, completedAt: new Date().toISOString() },
       { id: generateId(), title: 'Courir 10km', completed: false },
     ],
-    tags: ['sport', 'santé', 'endurance'],
+    tags: ['sport', 'sante'],
   },
 ];
 
 const sampleHabits: Habit[] = [
   {
     id: generateId(),
-    title: 'Méditation matinale',
-    description: '10 minutes de méditation chaque matin',
+    title: 'Meditation matinale',
+    description: '10 minutes de meditation chaque matin',
     category: 'health',
     frequency: 'daily',
     targetDays: [0, 1, 2, 3, 4, 5, 6],
@@ -109,25 +105,7 @@ const sampleHabits: Habit[] = [
     xpReward: 10,
     createdAt: new Date().toISOString(),
     color: '#10b981',
-    icon: '🧘',
-  },
-  {
-    id: generateId(),
-    title: 'Lecture 30min',
-    description: 'Lire au moins 30 minutes par jour',
-    category: 'education',
-    frequency: 'daily',
-    targetDays: [1, 2, 3, 4, 5],
-    completedDates: [],
-    completedToday: false,
-    currentStreak: 0,
-    longestStreak: 0,
-    streak: 0,
-    xpPerCompletion: 15,
-    xpReward: 15,
-    createdAt: new Date().toISOString(),
-    color: '#8b5cf6',
-    icon: '📚',
+    icon: '',
   },
 ];
 
@@ -138,6 +116,7 @@ function App() {
   const [activeView, setActiveView] = useState<'goals' | 'habits' | 'stats' | 'profile'>('goals');
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showAddHabit, setShowAddHabit] = useState(false);
+  const [xpAnimation, setXpAnimation] = useState(false);
 
   useEffect(() => { saveState('goals', goals); }, [goals]);
   useEffect(() => { saveState('habits', habits); }, [habits]);
@@ -146,16 +125,18 @@ function App() {
   const addXP = useCallback((amount: number) => {
     setProfile(prev => {
       const newXP = prev.xp + amount;
-      const newLevel = calculateLevel(newXP);
+      const levelData = calcLevelFromXP(newXP);
       return {
         ...prev,
         xp: newXP,
-        level: newLevel,
-        xpToNextLevel: newLevel * XP_PER_LEVEL,
+        level: levelData.level,
+        xpToNextLevel: levelData.xpToNext,
         weeklyXP: prev.weeklyXP + amount,
         monthlyXP: prev.monthlyXP + amount,
       };
     });
+    setXpAnimation(true);
+    setTimeout(() => setXpAnimation(false), 1000);
   }, []);
 
   const addGoal = useCallback((goalData: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -228,11 +209,11 @@ function App() {
     const today = new Date().toISOString().split('T')[0];
     setHabits(prev => prev.map(h => {
       if (h.id !== habitId) return h;
-      const alreadyDone = isCompletedToday(h.completedDates);
+      const alreadyDone = isHabitCompletedToday(h);
       const newDates = alreadyDone
         ? h.completedDates.filter(d => !d.startsWith(today))
         : [...h.completedDates, new Date().toISOString()];
-      const newStreak = calculateStreak(newDates);
+      const newStreak = calcHabitStreak(newDates);
       if (!alreadyDone) {
         addXP(h.xpPerCompletion);
         setProfile(p => ({ ...p, totalHabitsCompleted: p.totalHabitsCompleted + 1 }));
@@ -258,7 +239,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-      <XPBar profile={profile} />
+      <XPBar profile={profile} xpAnimation={xpAnimation} />
       <div className="pb-20 pt-16 px-4 max-w-2xl mx-auto">
         {activeView === 'goals' && (
           <GoalsView
@@ -284,7 +265,7 @@ function App() {
           <ProfileView profile={profile} goals={goals} habits={habits} onUpdateProfile={updateProfile} />
         )}
       </div>
-      <Navbar activeView={activeView} onNavigate={setActiveView} />
+      <Navbar activeView={activeView} onChangeView={setActiveView} />
       {showAddGoal && (
         <AddGoalModal
           onClose={() => setShowAddGoal(false)}
