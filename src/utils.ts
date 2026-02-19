@@ -52,7 +52,7 @@ export const getDaysRemaining = (targetDate: string): number => {
 // Check if a habit was completed today
 export const isHabitCompletedToday = (habit: Habit): boolean => {
   const today = new Date().toISOString().split('T')[0];
-  return habit.completedDates.includes(today);
+  return habit.completedDates.some(d => d.startsWith(today));
 };
 
 // Calculate habit streak
@@ -84,6 +84,10 @@ export const categoryColors: Record<GoalCategory, string> = {
   finance: 'from-yellow-500 to-amber-600',
   sport: 'from-orange-500 to-red-600',
   other: 'from-gray-500 to-slate-600',
+  learning: 'from-cyan-500 to-teal-600',
+  social: 'from-fuchsia-500 to-pink-600',
+  creativity: 'from-violet-500 to-purple-600',
+  productivity: 'from-lime-500 to-green-600',
 };
 
 export const categoryBgColors: Record<GoalCategory, string> = {
@@ -94,16 +98,24 @@ export const categoryBgColors: Record<GoalCategory, string> = {
   finance: 'bg-yellow-500/20 text-yellow-400',
   sport: 'bg-orange-500/20 text-orange-400',
   other: 'bg-gray-500/20 text-gray-400',
+  learning: 'bg-cyan-500/20 text-cyan-400',
+  social: 'bg-fuchsia-500/20 text-fuchsia-400',
+  creativity: 'bg-violet-500/20 text-violet-400',
+  productivity: 'bg-lime-500/20 text-lime-400',
 };
 
 export const categoryIcons: Record<GoalCategory, string> = {
-  health: '💚',
-  career: '💼',
-  education: '📚',
-  personal: '🌟',
-  finance: '💰',
-  sport: '🏃',
-  other: '🎯',
+  health: '',
+  career: '',
+  education: '',
+  personal: '',
+  finance: '',
+  sport: '',
+  other: '',
+  learning: '',
+  social: '',
+  creativity: '',
+  productivity: '',
 };
 
 export const priorityColors = {
@@ -116,22 +128,21 @@ export const priorityColors = {
 export const getEarnedBadges = (profile: UserProfile, goals: Goal[], habits: Habit[]): Badge[] => {
   const badges: Badge[] = [];
   const now = new Date().toISOString();
-
   if (goals.filter(g => g.status === 'completed').length >= 1) {
-    badges.push({ id: 'first-goal', name: 'Premier Objectif', description: 'Compléter votre premier objectif', icon: '🏆', unlockedAt: now, rarity: 'common' });
+    badges.push({ id: 'first-goal', name: 'Premier Objectif', description: 'Completer votre premier objectif', icon: '', unlockedAt: now, rarity: 'common' });
   }
   if (profile.level >= 5) {
-    badges.push({ id: 'level-5', name: 'Niveau 5', description: 'Atteindre le niveau 5', icon: '⭐', unlockedAt: now, rarity: 'common' });
+    badges.push({ id: 'level-5', name: 'Niveau 5', description: 'Atteindre le niveau 5', icon: '', unlockedAt: now, rarity: 'common' });
   }
   if (profile.level >= 10) {
-    badges.push({ id: 'level-10', name: 'Niveau 10', description: 'Atteindre le niveau 10', icon: '🌟', unlockedAt: now, rarity: 'rare' });
+    badges.push({ id: 'level-10', name: 'Niveau 10', description: 'Atteindre le niveau 10', icon: '', unlockedAt: now, rarity: 'rare' });
   }
   const maxStreak = Math.max(...habits.map(h => h.longestStreak), 0);
   if (maxStreak >= 7) {
-    badges.push({ id: 'week-streak', name: 'Semaine Parfaite', description: '7 jours de suite', icon: '🔥', unlockedAt: now, rarity: 'rare' });
+    badges.push({ id: 'week-streak', name: 'Semaine Parfaite', description: '7 jours de suite', icon: '', unlockedAt: now, rarity: 'rare' });
   }
   if (maxStreak >= 30) {
-    badges.push({ id: 'month-streak', name: 'Mois Légendaire', description: '30 jours de suite', icon: '👑', unlockedAt: now, rarity: 'legendary' });
+    badges.push({ id: 'month-streak', name: 'Mois Legendaire', description: '30 jours de suite', icon: '', unlockedAt: now, rarity: 'legendary' });
   }
   return badges;
 };
