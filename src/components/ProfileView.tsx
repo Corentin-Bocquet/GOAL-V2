@@ -1,168 +1,159 @@
 import { useState } from 'react';
-import { Goal, Habit, UserProfile } from '../types';
+import { GameState } from '../types';
+import { calcLevelFromXP } from '../utils';
+import { Edit2, Check, User, Trophy, Star, Zap } from 'lucide-react';
 
 interface ProfileViewProps {
-  profile: UserProfile;
-  goals: Goal[];
-  habits: Habit[];
-  onUpdateProfile: (updates: Partial<UserProfile>) => void;
+  state: GameState;
+  onUpdate: (updates: Partial<GameState>) => void;
 }
 
-const avatarOptions = ['🧙', '🦸', '🦹', '👨‍💻', '👩‍💻', '🧐', '🧝', '🚀', '🌟', '👽'];
+const avatarOptions = ['🧙', '🧘', '👾', '🥶', '🐉', '🦄', '👑', '🔮'];
 
-const rarityLabels: Record<string, string> = {
-  common: 'Commun',
-  rare: 'Rare',
-  epic: 'Épique',
-  legendary: 'Légendaire',
+const rarityColors: Record<string, string> = {
+  common: 'text-slate-400',
+  rare: 'text-blue-400',
+  epic: 'text-purple-400',
+  legendary: 'text-yellow-400',
 };
 
-function getEarnedBadgesLocal(profile: UserProfile, goals: Goal[], habits: Habit[]) {
-  const badges = [];
-  const completedGoals = goals.filter((g: any) => g.status === 'completed' || g.completed);
-  const maxStreak = habits.length > 0 ? Math.max(...habits.map((h: any) => h.currentStreak || h.streak || 0)) : 0;
-
-  if (goals.length >= 1) badges.push({ id: 'first_goal', name: 'Premier Pas', icon: '🎯', rarity: 'common' });
-  if (completedGoals.length >= 1) badges.push({ id: 'first_complete', name: 'Accomplissement', icon: '✅', rarity: 'common' });
-  if (maxStreak >= 7) badges.push({ id: 'habit_week', name: 'Semaine Parfaite', icon: '🔥', rarity: 'rare' });
-  if (profile.level >= 5) badges.push({ id: 'level_5', name: 'Expert', icon: '⭐', rarity: 'rare' });
-  if (profile.level >= 10) badges.push({ id: 'level_10', name: 'Légende', icon: '👑', rarity: 'legendary' });
-  if (completedGoals.length >= 5) badges.push({ id: 'goals_5', name: 'Ambitieux', icon: '🔝', rarity: 'rare' });
-  if (habits.length >= 5) badges.push({ id: 'habit_5', name: 'Routinier', icon: '🔄', rarity: 'common' });
-  if (profile.xp >= 1000) badges.push({ id: 'xp_1000', name: 'Guerrier XP', icon: '⚡', rarity: 'rare' });
-  return badges;
-}
-
-export default function ProfileView({ profile, goals, habits, onUpdateProfile }: ProfileViewProps) {
+export default function ProfileView({ state, onUpdate }: ProfileViewProps) {
   const [editing, setEditing] = useState(false);
-  const [nameInput, setNameInput] = useState(profile.name);
-  const badges = getEarnedBadgesLocal(profile, goals, habits);
+  const [nameInput, setNameInput] = useState(state.playerName);
+  const levelInfo = calcLevelFromXP(state.xp);
+  const xpProgress = Math.round((levelInfo.currentXP / levelInfo.requiredXP) * 100);
 
   const handleSave = () => {
-    onUpdateProfile({ name: nameInput.trim() || profile.name });
+    onUpdate({ playerName: nameInput.trim() || state.playerName });
     setEditing(false);
   };
 
-  const xpProgress = profile.xpToNextLevel > 0
-    ? Math.round((profile.xp / profile.xpToNextLevel) * 100)
+  const completedGoals = state.goals.filter(g => g.status === 'completed').length;
+  const maxStreak = state.habits.length > 0
+    ? Math.max(...state.habits.map(h => h.streak))
     : 0;
 
   return (
     <div className="space-y-4">
       {/* Profile Header */}
-      <div className="glass-card p-6">
+      <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-800/30 rounded-3xl p-6">
         <div className="flex items-center gap-4">
-          <div className="text-5xl">{profile.avatar}</div>
-          <div className="flex-1">
+          <div className="text-5xl">
+            {avatarOptions[parseInt(state.avatarId) % avatarOptions.length] || '🧙'}
+          </div>
+          <div className="flex-1 min-w-0">
             {editing ? (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <input
+                  type="text"
                   value={nameInput}
                   onChange={e => setNameInput(e.target.value)}
-                  className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white text-base font-bold flex-1 focus:outline-none focus:border-purple-500"
-                  placeholder="Votre nom"
-                  onKeyDown={e => e.key === 'Enter' && handleSave()}
+                  className="flex-1 bg-slate-700 border border-blue-500 rounded-xl px-3 py-1.5 text-white text-sm focus:outline-none"
                   autoFocus
                 />
-                <button onClick={handleSave} className="btn-primary py-2 px-4">✓</button>
+                <button onClick={handleSave} className="p-1.5 bg-green-600 rounded-lg">
+                  <Check size={16} className="text-white" />
+                </button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-white">{profile.name}</h1>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-white/30 hover:text-white/60 transition-colors text-sm"
-                >
-                  ✏️
+                <h2 className="text-xl font-black text-white truncate">
+                  {state.playerName || 'Héros'}
+                </h2>
+                <button onClick={() => setEditing(true)} className="text-slate-500 hover:text-slate-300">
+                  <Edit2 size={14} />
                 </button>
               </div>
             )}
-            <p className="text-white/50 text-sm">
-              Niveau {profile.level} &nbsp;•&nbsp; Membre depuis {new Date(profile.joinedAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs bg-blue-600/30 text-blue-400 px-2 py-0.5 rounded font-bold uppercase">
+                {state.currentArena.replace('_', ' ')}
+              </span>
+              <span className="text-xs text-slate-400">📅 Depuis {new Date(state.memberSince).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>
+            </div>
           </div>
         </div>
 
-        {/* XP Progress */}
+        {/* Level & XP */}
         <div className="mt-4">
-          <div className="flex justify-between text-sm text-white/60 mb-1">
-            <span>XP vers niveau {profile.level + 1}</span>
-            <span>{profile.xp}/{profile.xpToNextLevel}</span>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-black text-slate-400 uppercase">NIV. {levelInfo.level} • {levelInfo.title}</span>
+            <span className="text-xs text-slate-500">{levelInfo.currentXP}/{levelInfo.requiredXP} XP</span>
           </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(xpProgress, 100)}%` }}
+              className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full transition-all duration-700"
+              style={{ width: `${xpProgress}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* Avatar Selector */}
-      <div className="glass-card p-4">
-        <h2 className="text-base font-semibold text-white mb-3">Choisir un avatar</h2>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black text-yellow-400">{state.gold.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">💰 Or</p>
+        </div>
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black text-purple-400">{state.gems}</p>
+          <p className="text-xs text-slate-500">💎 Gemmes</p>
+        </div>
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black text-blue-400">{state.xp.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">⚡ XP Total</p>
+        </div>
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black text-green-400">{completedGoals}</p>
+          <p className="text-xs text-slate-500">🎯 Quetes</p>
+        </div>
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black text-orange-400">{maxStreak}</p>
+          <p className="text-xs text-slate-500">🔥 Serie max</p>
+        </div>
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3 text-center">
+          <p className="text-2xl font-black text-pink-400">{state.dailyChest.streak}</p>
+          <p className="text-xs text-slate-500">🎁 Coffres</p>
+        </div>
+      </div>
+
+      {/* Avatar selector */}
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4">
+        <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-3">Avatar</h3>
         <div className="flex flex-wrap gap-2">
-          {avatarOptions.map(avatar => (
+          {avatarOptions.map((emoji, i) => (
             <button
-              key={avatar}
-              onClick={() => onUpdateProfile({ avatar })}
-              className={`text-3xl p-2 rounded-xl transition-all ${
-                profile.avatar === avatar
-                  ? 'bg-violet-600/30 border border-violet-500/50'
-                  : 'bg-white/5 hover:bg-white/10'
+              key={i}
+              onClick={() => onUpdate({ avatarId: i.toString() })}
+              className={`text-2xl p-2 rounded-xl transition-all ${
+                state.avatarId === i.toString()
+                  ? 'bg-blue-600/30 ring-2 ring-blue-500'
+                  : 'bg-slate-700 hover:bg-slate-600'
               }`}
             >
-              {avatar}
+              {emoji}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card p-4 text-center">
-          <p className="text-3xl font-black text-purple-400">{profile.totalGoalsCompleted}</p>
-          <p className="text-xs text-white/50 mt-1">Objectifs complétés</p>
-        </div>
-        <div className="glass-card p-4 text-center">
-          <p className="text-3xl font-black text-pink-400">{profile.totalHabitsCompleted}</p>
-          <p className="text-xs text-white/50 mt-1">Habitudes complétées</p>
-        </div>
-      </div>
-
       {/* Badges */}
-      <div className="glass-card p-4">
-        <h2 className="text-base font-semibold text-white mb-3">
-          🏅 Badges ({badges.length})
-        </h2>
-        {badges.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-4xl mb-2">🔐</p>
-            <p className="text-white/40 text-sm">Complétez des objectifs pour gagner des badges !</p>
-          </div>
-        ) : (
+      {state.badges.length > 0 && (
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-4">
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-3">🏅 Badges ({state.badges.length})</h3>
           <div className="grid grid-cols-2 gap-2">
-            {badges.map(badge => (
-              <div
-                key={badge.id}
-                className={`p-3 rounded-xl border ${
-                  badge.rarity === 'legendary' ? 'badge-legendary' :
-                  badge.rarity === 'epic' ? 'badge-epic' :
-                  badge.rarity === 'rare' ? 'badge-rare' : 'badge-common'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{badge.icon}</span>
-                  <div>
-                    <p className="text-xs font-semibold">{badge.name}</p>
-                    <p className="text-[10px] opacity-70">{rarityLabels[badge.rarity]}</p>
-                  </div>
+            {state.badges.map(badge => (
+              <div key={badge.id} className="bg-slate-700/50 rounded-xl p-2.5 flex items-center gap-2">
+                <span className="text-xl">{badge.icon}</span>
+                <div className="min-w-0">
+                  <p className={`text-xs font-bold ${rarityColors[badge.rarity] || 'text-white'}`}>{badge.name}</p>
+                  <p className="text-xs text-slate-500 truncate">{badge.description}</p>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
