@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Goal } from '../types';
+import React, { useState } from 'react';
+import { Goal, GoalCategory, GoalDifficulty } from '../types';
 
 interface AddGoalModalProps {
   onClose: () => void;
-  onAdd: (goal: Omit<Goal, 'id' | 'createdAt' | 'completedAt'>) => void;
+  onAdd: (goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
 const categoryOptions = [
@@ -25,8 +25,8 @@ const difficultyOptions = [
 export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<Goal['category']>('health');
-  const [difficulty, setDifficulty] = useState<Goal['difficulty']>('medium');
+  const [category, setCategory] = useState<GoalCategory>('health');
+  const [difficulty, setDifficulty] = useState<GoalDifficulty>('medium');
   const [deadline, setDeadline] = useState('');
   const [targetValue, setTargetValue] = useState('');
   const [unit, setUnit] = useState('');
@@ -36,18 +36,22 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-
     onAdd({
       title: title.trim(),
       description: description.trim(),
       category,
       difficulty,
+      priority: 'medium',
+      status: 'active',
       progress: 0,
       target: targetValue ? parseInt(targetValue) : 100,
       unit: unit.trim() || '%',
+      targetDate: deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       deadline: deadline || undefined,
       completed: false,
       xpReward: selectedDifficulty?.xp || 100,
+      milestones: [],
+      tags: [],
     });
     onClose();
   };
@@ -58,16 +62,9 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-white">🎯 Nouvel Objectif</h2>
-            <button
-              onClick={onClose}
-              className="text-white/40 hover:text-white transition-colors text-xl"
-            >
-              ✕
-            </button>
+            <button onClick={onClose} className="text-white/40 hover:text-white transition-colors text-xl">✕</button>
           </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Title */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Titre *</label>
               <input
@@ -80,8 +77,6 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                 autoFocus
               />
             </div>
-
-            {/* Description */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Description</label>
               <textarea
@@ -92,8 +87,6 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-purple-500 transition-colors resize-none"
               />
             </div>
-
-            {/* Category */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">Catégorie</label>
               <div className="grid grid-cols-3 gap-2">
@@ -101,7 +94,7 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                   <button
                     key={cat.value}
                     type="button"
-                    onClick={() => setCategory(cat.value as Goal['category'])}
+                    onClick={() => setCategory(cat.value as GoalCategory)}
                     className={`p-2 rounded-xl border text-sm transition-all ${
                       category === cat.value
                         ? 'border-purple-500 bg-purple-500/20 text-white'
@@ -113,8 +106,6 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                 ))}
               </div>
             </div>
-
-            {/* Difficulty */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">Difficulté</label>
               <div className="grid grid-cols-4 gap-2">
@@ -122,7 +113,7 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                   <button
                     key={diff.value}
                     type="button"
-                    onClick={() => setDifficulty(diff.value as Goal['difficulty'])}
+                    onClick={() => setDifficulty(diff.value as GoalDifficulty)}
                     className={`p-2 rounded-xl border text-sm transition-all ${
                       difficulty === diff.value
                         ? 'border-purple-500 bg-purple-500/20 text-white'
@@ -135,8 +126,6 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                 ))}
               </div>
             </div>
-
-            {/* Progress Target */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-1">Objectif chiffré</label>
@@ -160,8 +149,6 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                 />
               </div>
             </div>
-
-            {/* Deadline */}
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Date limite</label>
               <input
@@ -171,16 +158,12 @@ export default function AddGoalModal({ onClose, onAdd }: AddGoalModalProps) {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
               />
             </div>
-
-            {/* XP Preview */}
             {selectedDifficulty && (
               <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
                 <p className="text-sm text-white/60">Récompense</p>
                 <p className="text-2xl font-bold text-purple-400">+{selectedDifficulty.xp} XP</p>
               </div>
             )}
-
-            {/* Actions */}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
